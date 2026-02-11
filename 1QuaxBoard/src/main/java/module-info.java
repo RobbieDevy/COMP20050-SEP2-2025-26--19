@@ -1,8 +1,7 @@
-module com.example._quaxboard {
+module com.quaxboard.app {
     requires javafx.controls;
     requires javafx.fxml;
 
-
-    opens com.example._quaxboard to javafx.fxml;
-    exports com.example._quaxboard;
+    opens com.quaxboard.app to javafx.fxml;
+    exports com.quaxboard.app;
 }
