@@ -5,7 +5,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example</groupId>
+    <groupId>com.quaxboard</groupId>
     <artifactId>1QuaxBoard</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>1QuaxBoard</name>
@@ -13,8 +13,12 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
+
         <javafx.version>21.0.4</javafx.version>
         <junit.version>5.10.2</junit.version>
+
+        <!-- NEW -->
+        <testfx.version>4.0.18</testfx.version>
     </properties>
 
     <dependencies>
@@ -37,10 +41,25 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- NEW: TestFX (UI testing for JavaFX) -->
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-core</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -50,20 +69,55 @@
                 </configuration>
             </plugin>
 
+            <!-- JavaFX run plugin -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <!-- IMPORTANT: use your actual package + class name -->
                     <mainClass>com.quaxboard.app.QuaxBoardApp</mainClass>
+                </configuration>
+            </plugin>
+
+            <!-- NEW-ish: Surefire config so TestFX can access JavaFX internals on Java 21 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <useModulePath>true</useModulePath>
+
+                    <!-- These opens avoid "illegal access" / reflection errors with TestFX on Java 17+ -->
+                    <argLine>
+                        --add-opens javafx.graphics/javafx.stage=ALL-UNNAMED
+                        --add-opens javafx.graphics/javafx.scene=ALL-UNNAMED
+                        --add-opens javafx.graphics/com.sun.javafx.application=ALL-UNNAMED
+                        --add-opens javafx.controls/javafx.scene.control=ALL-UNNAMED
+                        --add-opens javafx.base/com.sun.javafx.runtime=ALL-UNNAMED
+                    </argLine>
                 </configuration>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.quaxboard.app.QuaxBoardApp</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

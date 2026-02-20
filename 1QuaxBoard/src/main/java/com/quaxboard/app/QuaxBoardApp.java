@@ -1,20 +1,19 @@
 package com.quaxboard.app;
+
 import javafx.application.Application;
-import javafx.stage.Stage;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 
 public class QuaxBoardApp extends Application {
     @Override
-    public void start(Stage stage) {
-        Label label = new Label("QuaxBoard");
-        Scene scene = new Scene(new StackPane(label), 800, 600);
-        stage.setScene(scene);
+    public void start(Stage stage) throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/quaxboard/app/board-view.fxml"));
+        Scene scene = new Scene(loader.load(), 917, 665);
         stage.setTitle("QuaxBoard");
+        stage.setScene(scene);
         stage.show();
     }
-
 
     public static void main(String[] args) {
         launch();
