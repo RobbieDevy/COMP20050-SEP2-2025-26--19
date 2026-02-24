@@ -40,6 +40,28 @@ public class BoardController { // controller for fxml file
         @Override public String toString() { return label; } // return text rather than enum name (e.g. display "Human vs Human" rather than "HUMAN_VS_HUMAN")
     }
 
+    private enum Player {
+        BLACK, WHITE;
+
+        Player next() {
+            return this == BLACK ? WHITE : BLACK;
+        }
+    }
+
+    private Player currentPlayer = Player.BLACK;
+
+    private Player[][] octOwner = new Player[BOARD_SIZE][BOARD_SIZE];
+    private Player[][] rhoOwner = new Player[BOARD_SIZE - 1][BOARD_SIZE - 1];
+
+    private static final Color BLACK_OCTAGON = Color.web("Black");
+    private static final Color WHITE_OCTAGON = Color.web("White");
+    private static final Color BLACK_RHOMBUS = Color.web("Black");
+    private static final Color WHITE_RHOMBUS = Color.web("White");
+
+    private void updateTurnIndicator() {
+        turnLabel.setText(currentPlayer + " to play");
+    }
+
     @FXML
     private void initialize() { // javafx runs after fxml loads - used for setting up UI and drawing the board
         setupModeUI(); // fills dropdown and sets title
@@ -61,7 +83,7 @@ public class BoardController { // controller for fxml file
             if (newMode != null) applyMode(newMode);
         });
 
-        turnLabel.setText("BLACK to play"); // tells user whose turn it is
+        updateTurnIndicator();
     }
 
     private void applyMode(GameMode mode) {
@@ -120,7 +142,12 @@ public class BoardController { // controller for fxml file
 
                 Polygon oct = makeOctagon(centerX, centerY, tileRadius, cornerCut); // creates the 8 point shape at the center we have calculated
                 oct.setId("Octagon_" + row + "_" + col); // assigns an ID for each octagon
-                oct.setFill(OCT_FILL);
+                Player owner = octOwner[row][col];
+                if(owner == null) {
+                    oct.setFill((OCT_FILL));
+                } else {
+                    oct.setFill(owner ==  Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON);
+                }
                 oct.setStroke(STROKE);
                 oct.setOnMouseClicked(this::onCellClicked); // call the click method when an octagon is clicked
 
@@ -135,7 +162,12 @@ public class BoardController { // controller for fxml file
 
                 Polygon rho = makeDiamond(holeCenterX, holeCenterY, diamondRadius); // creates the 4 point rhombus at the position calculated
                 rho.setId("Rhombus_" + row + "_" + col); // assigns an ID for each rhombus
-                rho.setFill(RHO_FILL);
+                Player owner = rhoOwner[row][col];
+                if(owner == null) {
+                    rho.setFill((RHO_FILL));
+                } else {
+                    rho.setFill(owner == Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS);
+                }
                 rho.setStroke(STROKE);
                 rho.setOnMouseClicked(this::onCellClicked); // call the click method when a rhombus is clicked
 
@@ -200,8 +232,39 @@ public class BoardController { // controller for fxml file
     }
 
     private void onCellClicked(MouseEvent e) { // click function so that when a shape gets clicked, its id is printed to the terminal/console
-        if (e.getSource() instanceof Polygon p) {
-            System.out.println("Clicked: " + p.getId());
+        if (!(e.getSource() instanceof Polygon clickedShape)) {
+            return;
+        }
+
+        String id = clickedShape.getId();
+        if (id == null) return;
+        if(id.startsWith("Octagon_")) {
+            String[] parts = id.split("_");
+            int row = Integer.parseInt(parts[1]);
+            int col = Integer.parseInt(parts[2]);
+
+            if (octOwner[row][col] != null) return;
+
+            octOwner[row][col] = currentPlayer;
+
+            clickedShape.setFill(currentPlayer == Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON);
+
+            currentPlayer = currentPlayer.next();
+            updateTurnIndicator();
+            return;
+        }
+
+        if(id.startsWith("Rhombus_")) {
+            String[] parts =  id.split("_");
+            int row = Integer.parseInt(parts[1]);
+            int col = Integer.parseInt(parts[2]);
+
+            if (rhoOwner[row][col] != null) return;
+
+            rhoOwner[row][col] = currentPlayer;
+            clickedShape.setFill(currentPlayer == Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS);
+            currentPlayer = currentPlayer.next();
+            updateTurnIndicator();
         }
     }
 
