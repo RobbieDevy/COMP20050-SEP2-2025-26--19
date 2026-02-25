@@ -24,6 +24,9 @@ public class BoardController { // controller for fxml file
     // board size (11 x 11 octagons)
     private static final int BOARD_SIZE = 11;
 
+    private final GameState gameState = new GameState(BOARD_SIZE);
+    private final GameController gameController = new GameController(gameState);
+
     // colours for octagons and rhombi
     private static final Color OCT_FILL = Color.web("#d67a00");
     private static final Color RHO_FILL = Color.web("#f0b000");
@@ -40,18 +43,6 @@ public class BoardController { // controller for fxml file
         @Override public String toString() { return label; } // return text rather than enum name (e.g. display "Human vs Human" rather than "HUMAN_VS_HUMAN")
     }
 
-    private enum Player {
-        BLACK, WHITE;
-
-        Player next() {
-            return this == BLACK ? WHITE : BLACK;
-        }
-    }
-
-    private Player currentPlayer = Player.BLACK;
-
-    private Player[][] octOwner = new Player[BOARD_SIZE][BOARD_SIZE];
-    private Player[][] rhoOwner = new Player[BOARD_SIZE - 1][BOARD_SIZE - 1];
 
     private static final Color BLACK_OCTAGON = Color.web("Black");
     private static final Color WHITE_OCTAGON = Color.web("White");
@@ -59,7 +50,7 @@ public class BoardController { // controller for fxml file
     private static final Color WHITE_RHOMBUS = Color.web("White");
 
     private void updateTurnIndicator() {
-        turnLabel.setText(currentPlayer + " to play");
+        turnLabel.setText(gameController.currentPlayer() + " to play");
     }
 
     @FXML
@@ -142,11 +133,11 @@ public class BoardController { // controller for fxml file
 
                 Polygon oct = makeOctagon(centerX, centerY, tileRadius, cornerCut); // creates the 8 point shape at the center we have calculated
                 oct.setId("Octagon_" + row + "_" + col); // assigns an ID for each octagon
-                Player owner = octOwner[row][col];
+                GameState.Player owner = gameState.getOctOwner(row, col);
                 if(owner == null) {
                     oct.setFill((OCT_FILL));
                 } else {
-                    oct.setFill(owner ==  Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON);
+                    oct.setFill(owner ==  GameState.Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON);
                 }
                 oct.setStroke(STROKE);
                 oct.setOnMouseClicked(this::onCellClicked); // call the click method when an octagon is clicked
@@ -162,11 +153,11 @@ public class BoardController { // controller for fxml file
 
                 Polygon rho = makeDiamond(holeCenterX, holeCenterY, diamondRadius); // creates the 4 point rhombus at the position calculated
                 rho.setId("Rhombus_" + row + "_" + col); // assigns an ID for each rhombus
-                Player owner = rhoOwner[row][col];
+                GameState.Player owner = gameState.getRhoOwner(row, col);
                 if(owner == null) {
                     rho.setFill((RHO_FILL));
                 } else {
-                    rho.setFill(owner == Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS);
+                    rho.setFill(owner == GameState.Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS);
                 }
                 rho.setStroke(STROKE);
                 rho.setOnMouseClicked(this::onCellClicked); // call the click method when a rhombus is clicked
@@ -238,18 +229,16 @@ public class BoardController { // controller for fxml file
 
         String id = clickedShape.getId();
         if (id == null) return;
+
         if(id.startsWith("Octagon_")) {
             String[] parts = id.split("_");
             int row = Integer.parseInt(parts[1]);
             int col = Integer.parseInt(parts[2]);
 
-            if (octOwner[row][col] != null) return;
+           var result = gameController.place(GameController.cellType.OCTAGON, row, col);
 
-            octOwner[row][col] = currentPlayer;
-
-            clickedShape.setFill(currentPlayer == Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON);
-
-            currentPlayer = currentPlayer.next();
+            if(!result.success()) return;
+            redraw();
             updateTurnIndicator();
             return;
         }
@@ -259,11 +248,9 @@ public class BoardController { // controller for fxml file
             int row = Integer.parseInt(parts[1]);
             int col = Integer.parseInt(parts[2]);
 
-            if (rhoOwner[row][col] != null) return;
-
-            rhoOwner[row][col] = currentPlayer;
-            clickedShape.setFill(currentPlayer == Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS);
-            currentPlayer = currentPlayer.next();
+            var result = gameController.place(GameController.cellType.RHOMBUS, row, col);
+            if (!result.success()) return;
+            redraw();
             updateTurnIndicator();
         }
     }
