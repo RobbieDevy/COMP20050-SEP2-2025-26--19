@@ -12,6 +12,14 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+/*
+UI manager for the board.
+Creates and draws all octagons/rhombuses, colours them based on who owns each cell.
+Creates labels on the edges of the board.
+Handles clicks on cells, tells GameController to place a move, and if it's a valid move, redraws the board
+with that move and updates the turn indicator.
+Sets up the game mode selection and redraws the board based on window size changes.
+ */
 public class BoardController { // controller for fxml file
 
     @FXML private Pane boardPane;
@@ -43,12 +51,13 @@ public class BoardController { // controller for fxml file
         @Override public String toString() { return label; } // return text rather than enum name (e.g. display "Human vs Human" rather than "HUMAN_VS_HUMAN")
     }
 
-
+    // used to set colours for octagons and rhombi
     private static final Color BLACK_OCTAGON = Color.web("Black");
     private static final Color WHITE_OCTAGON = Color.web("White");
     private static final Color BLACK_RHOMBUS = Color.web("Black");
     private static final Color WHITE_RHOMBUS = Color.web("White");
 
+    // turn indicator for current player
     private void updateTurnIndicator() {
         turnLabel.setText(gameController.currentPlayer() + " to play");
     }
@@ -96,7 +105,7 @@ public class BoardController { // controller for fxml file
 
         double paneW = boardPane.getWidth(); // gets current available space
         double paneH = boardPane.getHeight();
-        if (paneW <= 0 || paneH <= 0) return; // if there is no space, stop the program
+        if (paneW <= 0 || paneH <= 0) return; // if there is no space
 
         // calculates the amount of space we are allowed to draw in after the padding around the edges
         double usableW = paneW - 2 * OUTER_PADDING;
@@ -133,13 +142,13 @@ public class BoardController { // controller for fxml file
 
                 Polygon oct = makeOctagon(centerX, centerY, tileRadius, cornerCut); // creates the 8 point shape at the center we have calculated
                 oct.setId("Octagon_" + row + "_" + col); // assigns an ID for each octagon
-                GameState.Player owner = gameState.getOctOwner(row, col);
-                if(owner == null) {
-                    oct.setFill((OCT_FILL));
-                } else {
-                    oct.setFill(owner ==  GameState.Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON);
+                GameState.Player owner = gameState.getOctOwner(row, col); // checks gameState to see who owns octagon cell
+                if(owner == null) { // if no one owns the cell, it is empty
+                    oct.setFill((OCT_FILL)); // set the colour to default colour
+                } else { // if someone owns the cell
+                    oct.setFill(owner ==  GameState.Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON); // set the colour to the player's colour'
                 }
-                oct.setStroke(STROKE);
+                oct.setStroke(STROKE); // sets the outline colour for the octagon
                 oct.setOnMouseClicked(this::onCellClicked); // call the click method when an octagon is clicked
 
                 boardPane.getChildren().add(oct); // adds each octagon to the screen
@@ -147,19 +156,19 @@ public class BoardController { // controller for fxml file
         }
 
         for (int row = 0; row < BOARD_SIZE - 1; row++) {
-            for (int col = 0; col < BOARD_SIZE - 1; col++) { // for loops iterate through the 11x11 positions
+            for (int col = 0; col < BOARD_SIZE - 1; col++) { // for loops iterate through the 10x10 positions
                 double holeCenterX = startCenterX + col * stepBetweenCenters + tileRadius; // calculates the gap exactly halfway between four octagons
                 double holeCenterY = startCenterY + row * stepBetweenCenters + tileRadius;
 
                 Polygon rho = makeDiamond(holeCenterX, holeCenterY, diamondRadius); // creates the 4 point rhombus at the position calculated
                 rho.setId("Rhombus_" + row + "_" + col); // assigns an ID for each rhombus
-                GameState.Player owner = gameState.getRhoOwner(row, col);
-                if(owner == null) {
-                    rho.setFill((RHO_FILL));
-                } else {
-                    rho.setFill(owner == GameState.Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS);
+                GameState.Player owner = gameState.getRhoOwner(row, col); // checks gameState to see who owns rhombus cell
+                if(owner == null) { // if no one owns the cell
+                    rho.setFill((RHO_FILL)); // set the colour to default colour
+                } else { // if someone owns the cell
+                    rho.setFill(owner == GameState.Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS); // set the colour to the player's colour'
                 }
-                rho.setStroke(STROKE);
+                rho.setStroke(STROKE); // sets the outline colour for the rhombus
                 rho.setOnMouseClicked(this::onCellClicked); // call the click method when a rhombus is clicked
 
                 boardPane.getChildren().add(rho); // adds each rhombus to the screen
@@ -189,14 +198,14 @@ public class BoardController { // controller for fxml file
             Text top = new Text(String.valueOf(letter)); // creates the top letter label
             top.setFont(font); // sets font size
             top.setFill(Color.web("#f8fafc")); // sets text colour
-            top.setX(cx - fontSize * 0.25); // moves slightly down so text is centered
+            top.setX(cx - fontSize * 0.25); // moves slightly across so text is centered
             top.setY(topEdge - pad); // place above the board edge
             boardPane.getChildren().add(top); // add the letter to the pane
 
             Text bottom = new Text(String.valueOf(letter)); // creates the bottom letter label
             bottom.setFont(font); // sets font size
             bottom.setFill(Color.web("#f8fafc")); // sets font colour
-            bottom.setX(cx - fontSize * 0.25); // moves slightly down so text is centered
+            bottom.setX(cx - fontSize * 0.25); // moves slightly across so text is centered
             bottom.setY(bottomEdge + pad + fontSize * 0.35); // place below the board edge
             boardPane.getChildren().add(bottom); // add the letter to the pane
         }
@@ -222,36 +231,36 @@ public class BoardController { // controller for fxml file
         }
     }
 
-    private void onCellClicked(MouseEvent e) { // click function so that when a shape gets clicked, its id is printed to the terminal/console
-        if (!(e.getSource() instanceof Polygon clickedShape)) {
+    private void onCellClicked(MouseEvent e) { // click function so that when a shape gets clicked
+        if (!(e.getSource() instanceof Polygon clickedShape)) { // ensures that the thing clicked is a polygon (octagon or rhombus)
+            return; // if it's not, we stop immediately
+        }
+
+        String id = clickedShape.getId(); // gets the id
+        if (id == null) return; // if there is no id, we stop immediately
+
+        if(id.startsWith("Octagon_")) { // if the id starts with octagon
+            String[] parts = id.split("_"); // we split the id by the underscores
+            int row = Integer.parseInt(parts[1]); // grabs the second piece as row number
+            int col = Integer.parseInt(parts[2]); // grabs the third piece as column number
+
+           var result = gameController.place(GameController.cellType.OCTAGON, row, col); // asks gameController to place an Octagon at that row
+
+            if(!result.success()) return; // if the move fails (is invalid), we stop immediately
+            redraw(); // redraws the board so the move appears
+            updateTurnIndicator(); // updates the turn indicator
             return;
         }
 
-        String id = clickedShape.getId();
-        if (id == null) return;
+        if(id.startsWith("Rhombus_")) { // if the id starts with rhombus
+            String[] parts =  id.split("_"); // we split the id by the underscores
+            int row = Integer.parseInt(parts[1]); // grabs the second piece as row number
+            int col = Integer.parseInt(parts[2]); // grabs the third piece as column number
 
-        if(id.startsWith("Octagon_")) {
-            String[] parts = id.split("_");
-            int row = Integer.parseInt(parts[1]);
-            int col = Integer.parseInt(parts[2]);
-
-           var result = gameController.place(GameController.cellType.OCTAGON, row, col);
-
-            if(!result.success()) return;
-            redraw();
-            updateTurnIndicator();
-            return;
-        }
-
-        if(id.startsWith("Rhombus_")) {
-            String[] parts =  id.split("_");
-            int row = Integer.parseInt(parts[1]);
-            int col = Integer.parseInt(parts[2]);
-
-            var result = gameController.place(GameController.cellType.RHOMBUS, row, col);
-            if (!result.success()) return;
-            redraw();
-            updateTurnIndicator();
+            var result = gameController.place(GameController.cellType.RHOMBUS, row, col); // asks gameController to place a rhombus
+            if (!result.success()) return; // if the move fails (is invalid), we stop immediately
+            redraw(); // redraws the board so the move appears
+            updateTurnIndicator(); // updates the turn indicator
         }
     }
 
