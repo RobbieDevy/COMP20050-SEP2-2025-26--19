@@ -11,85 +11,90 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.scene.control.Button;
 
-/*
-UI manager for the board.
-Creates and draws all octagons/rhombuses, colours them based on who owns each cell.
-Creates labels on the edges of the board.
-Handles clicks on cells, tells GameController to place a move, and if it's a valid move, redraws the board
-with that move and updates the turn indicator.
-Sets up the game mode selection and redraws the board based on window size changes.
- */
-public class BoardController { // controller for fxml file
+public class BoardController {
+    private static final int BOARD_SIZE = 11;
+
+    private static final Color EMPTY_OCTAGON_FILL = Color.web("#d67a00");
+    private static final Color EMPTY_RHOMBUS_FILL = Color.web("#f0b000");
+    private static final Color PIECE_BLACK_FILL = Color.BLACK;
+    private static final Color PIECE_WHITE_FILL = Color.WHITE;
+    private static final Color STROKE = Color.web("#4a2a00");
+    private static final Color LABEL_COLOR = Color.web("#f8fafc");
+
+    private static final double OUTER_PADDING = 60;
+    private static final double OCTAGON_CORNER_CUT_RATIO = 0.41421356237;
+    private static final double MIN_LABEL_FONT_SIZE = 12;
+    private static final double LABEL_FONT_SCALE = 0.55;
+    private static final double MIN_LABEL_PADDING = 10;
+    private static final double LABEL_PADDING_SCALE = 0.6;
+    private static final double HORIZONTAL_LABEL_OFFSET_SCALE = 0.25;
+    private static final double VERTICAL_LABEL_OFFSET_SCALE = 0.35;
+
+    public enum GameMode {
+        HUMAN_VS_HUMAN("Human vs Human"),
+        HUMAN_VS_BOT("Human vs Bot");
+
+        private final String label;
+        GameMode(String label) { this.label = label; }
+        @Override public String toString() { return label; }
+    }
+
+    private record BoardLayout(
+            double startCenterX,
+            double startCenterY,
+            double stepBetweenCenters,
+            double tileRadius,
+            double cornerCut,
+            double diamondRadius
+    ) {}
 
     @FXML private Pane boardPane;
-
-    // connects to labels and dropdown in FXML file
     @FXML private Label titleLabel;
     @FXML private Label turnLabel;
     @FXML private ComboBox<GameMode> modeCombo;
-
-    // board size (11 x 11 octagons)
-    private static final int BOARD_SIZE = 11;
+    @FXML private Button pieRuleButton;
 
     private final GameState gameState = new GameState(BOARD_SIZE);
     private final GameController gameController = new GameController(gameState);
 
-    // colours for octagons and rhombi
-    private static final Color OCT_FILL = Color.web("#d67a00");
-    private static final Color RHO_FILL = Color.web("#f0b000");
-    private static final Color STROKE   = Color.web("#4a2a00");
-
-    private static final double OUTER_PADDING = 60; // creates a padding between the board and the pane
-
-    public enum GameMode { // list of game mode: human vs human or human vs bot
-        HUMAN_VS_HUMAN("Human vs Human"),
-        HUMAN_VS_BOT("Human vs Bot");
-
-        private final String label; // stores the text (human vs human or human vs bot)
-        GameMode(String label) { this.label = label; } // constructor for game mode
-        @Override public String toString() { return label; } // return text rather than enum name (e.g. display "Human vs Human" rather than "HUMAN_VS_HUMAN")
-    }
-
-    // used to set colours for octagons and rhombi
-    private static final Color BLACK_OCTAGON = Color.web("Black");
-    private static final Color WHITE_OCTAGON = Color.web("White");
-    private static final Color BLACK_RHOMBUS = Color.web("Black");
-    private static final Color WHITE_RHOMBUS = Color.web("White");
-
-    // turn indicator for current player
     private void updateTurnIndicator() {
-        turnLabel.setText(gameController.currentPlayer() + " to play");
+        GameState.Player colour = gameController.currentPlayer();
+        GameState.HumanPlayer human = gameState.getPlayerForColour(colour);
+        String playerText = (human == GameState.HumanPlayer.PLAYER_1) ? "Player 1" : "Player 2";
+        turnLabel.setText(colour + " (" + playerText + ") to play");
     }
 
     @FXML
     private void initialize() { // javafx runs after fxml loads - used for setting up UI and drawing the board
-        setupModeUI(); // fills dropdown and sets title
-
-        Platform.runLater(this::redraw); // run redraw after JavaFX has finished loading fxml file
-
-        // when the pane changes size, we redraw the board. when the observed size changes, we redraw the board using the new size
-        boardPane.widthProperty().addListener((obs, oldWidth, newWidth) -> redraw());
-        boardPane.heightProperty().addListener((obs, oldHeight, newHeight) -> redraw());
+        setupModeUI();
+        updatePieRuleButton();
+        Platform.runLater(this::redraw);
+        resizer();
     }
 
     private void setupModeUI() {
-        modeCombo.getItems().setAll(GameMode.HUMAN_VS_HUMAN, GameMode.HUMAN_VS_BOT); // puts different game modes into the dropdown menu
-        modeCombo.setValue(GameMode.HUMAN_VS_HUMAN); // default game mode
-
-        applyMode(modeCombo.getValue()); // updates title based on game mode choice
+        modeCombo.getItems().setAll(GameMode.HUMAN_VS_HUMAN, GameMode.HUMAN_VS_BOT);
+        modeCombo.setValue(GameMode.HUMAN_VS_HUMAN);
+        applyMode(modeCombo.getValue());
 
         modeCombo.valueProperty().addListener((obs, oldMode, newMode) -> { // whenever user picks new dropdown option, call applyMode again
             if (newMode != null) applyMode(newMode);
         });
 
         updateTurnIndicator();
+        updatePieRuleButton();
+    }
+
+    private void resizer() {
+        boardPane.widthProperty().addListener((obs, oldWidth, newWidth) -> redraw());
+        boardPane.heightProperty().addListener((obs, oldHeight, newHeight) -> redraw());
     }
 
     private void applyMode(GameMode mode) {
-        String prettyTitle = "Quax - " + mode; // creates title "Quax" and whatever game mode is chosen (default - human vs human)
-
-        titleLabel.setText(prettyTitle); //updates the title in the display
+        String prettyTitle = "Quax - " + mode;
+        titleLabel.setText(prettyTitle);
 
         Platform.runLater(() -> { // sets window title using the same title displayed in the GUI
             if (boardPane.getScene() == null) return;
@@ -101,170 +106,188 @@ public class BoardController { // controller for fxml file
     }
 
     private void redraw() {
-        boardPane.getChildren().clear(); // starts off by clearing the board
+        boardPane.getChildren().clear();
 
-        double paneW = boardPane.getWidth(); // gets current available space
-        double paneH = boardPane.getHeight();
-        if (paneW <= 0 || paneH <= 0) return; // if there is no space
+        BoardLayout layout = calculateBoardLayout();
+        if (layout == null) {
+            return;
+        }
 
-        // calculates the amount of space we are allowed to draw in after the padding around the edges
-        double usableW = paneW - 2 * OUTER_PADDING;
-        double usableH = paneH - 2 * OUTER_PADDING;
-        if (usableW <= 0 || usableH <= 0) return;
+        drawOctagons(layout);
+        drawRhombuses(layout);
+        addColumnLabels(layout);
+        addRowLabels(layout);
+    }
 
-        // we want 11 tiles. each tile takes 2 x radius from center to center, so we divide space by 11 x 2 to get the biggest radius that fits
-        double maxRadiusByWidth  = usableW / (BOARD_SIZE * 2.0);
-        double maxRadiusByHeight = usableH / (BOARD_SIZE * 2.0);
-        double tileRadius = Math.min(maxRadiusByWidth, maxRadiusByHeight); // use min so it fits in both width and height
+    private BoardLayout calculateBoardLayout() {
+        double paneWidth = boardPane.getWidth();
+        double paneHeight = boardPane.getHeight();
 
-        double stepBetweenCenters = 2 * tileRadius; // the center of the tiles are spaced by the diameter
+        if (paneWidth <= 0 || paneHeight <= 0) {
+            return null;
+        }
 
-        // 11 centers and between centers there are 10 gaps and add tile edges on each side
-        double boardPixelWidth  = (BOARD_SIZE - 1) * stepBetweenCenters + 2 * tileRadius;
+        double usableWidth = paneWidth - 2 * OUTER_PADDING;
+        double usableHeight = paneHeight - 2 * OUTER_PADDING;
+        if (usableWidth <= 0 || usableHeight <= 0) {
+            return null;
+        }
+
+        double maxRadiusByWidth = usableWidth / (BOARD_SIZE * 2.0);
+        double maxRadiusByHeight = usableHeight / (BOARD_SIZE * 2.0);
+        double tileRadius = Math.min(maxRadiusByWidth, maxRadiusByHeight);
+
+        double stepBetweenCenters = 2 * tileRadius;
+        double boardPixelWidth = (BOARD_SIZE - 1) * stepBetweenCenters + 2 * tileRadius;
         double boardPixelHeight = (BOARD_SIZE - 1) * stepBetweenCenters + 2 * tileRadius;
 
-        // centers the board by splitting whatever extra space remains in half on both sides
-        double boardLeftEdge = (paneW - boardPixelWidth) / 2.0;
-        double boardTopEdge  = (paneH - boardPixelHeight) / 2.0;
+        double boardLeftEdge = (paneWidth - boardPixelWidth) / 2.0;
+        double boardTopEdge = (paneHeight - boardPixelHeight) / 2.0;
 
-        // calculates the first tile center
         double startCenterX = boardLeftEdge + tileRadius;
         double startCenterY = boardTopEdge + tileRadius;
 
-        // to make an octagon, we make a square and cut each corner equally
-        double cornerCut = 0.41421356237 * tileRadius;
-        double diamondRadius = tileRadius - cornerCut; // the size of the rhombus that fits in between the gaps of each octagon
+        double cornerCut = OCTAGON_CORNER_CUT_RATIO * tileRadius;
+        double diamondRadius = tileRadius - cornerCut;
 
-        for (int row = 0; row < BOARD_SIZE; row++) {
-            for (int col = 0; col < BOARD_SIZE; col++) { // for loops iterate through the 11x11 positions
-                double centerX = startCenterX + col * stepBetweenCenters; // moves right
-                double centerY = startCenterY + row * stepBetweenCenters; // moves down
-
-                Polygon oct = makeOctagon(centerX, centerY, tileRadius, cornerCut); // creates the 8 point shape at the center we have calculated
-                oct.setId("Octagon_" + row + "_" + col); // assigns an ID for each octagon
-                GameState.Player owner = gameState.getOctOwner(row, col); // checks gameState to see who owns octagon cell
-                if(owner == null) { // if no one owns the cell, it is empty
-                    oct.setFill((OCT_FILL)); // set the colour to default colour
-                } else { // if someone owns the cell
-                    oct.setFill(owner ==  GameState.Player.BLACK ? BLACK_OCTAGON : WHITE_OCTAGON); // set the colour to the player's colour'
-                }
-                oct.setStroke(STROKE); // sets the outline colour for the octagon
-                oct.setOnMouseClicked(this::onCellClicked); // call the click method when an octagon is clicked
-
-                boardPane.getChildren().add(oct); // adds each octagon to the screen
-            }
-        }
-
-        for (int row = 0; row < BOARD_SIZE - 1; row++) {
-            for (int col = 0; col < BOARD_SIZE - 1; col++) { // for loops iterate through the 10x10 positions
-                double holeCenterX = startCenterX + col * stepBetweenCenters + tileRadius; // calculates the gap exactly halfway between four octagons
-                double holeCenterY = startCenterY + row * stepBetweenCenters + tileRadius;
-
-                Polygon rho = makeDiamond(holeCenterX, holeCenterY, diamondRadius); // creates the 4 point rhombus at the position calculated
-                rho.setId("Rhombus_" + row + "_" + col); // assigns an ID for each rhombus
-                GameState.Player owner = gameState.getRhoOwner(row, col); // checks gameState to see who owns rhombus cell
-                if(owner == null) { // if no one owns the cell
-                    rho.setFill((RHO_FILL)); // set the colour to default colour
-                } else { // if someone owns the cell
-                    rho.setFill(owner == GameState.Player.BLACK ? BLACK_RHOMBUS : WHITE_RHOMBUS); // set the colour to the player's colour'
-                }
-                rho.setStroke(STROKE); // sets the outline colour for the rhombus
-                rho.setOnMouseClicked(this::onCellClicked); // call the click method when a rhombus is clicked
-
-                boardPane.getChildren().add(rho); // adds each rhombus to the screen
-            }
-        }
-
-        addEdgeLabels(startCenterX, startCenterY, stepBetweenCenters, tileRadius); // adds A - K and 1 - 11 around the board so it aligns with the centers
+        return new BoardLayout(
+                startCenterX,
+                startCenterY,
+                stepBetweenCenters,
+                tileRadius,
+                cornerCut,
+                diamondRadius
+        );
     }
 
-    private void addEdgeLabels(double startCenterX, double startCenterY, double step, double r) {
-        // Board edges (in pixels)
-        double leftEdge = startCenterX - r; // finds the leftmost boundary of the first tile
-        double rightEdge = startCenterX + (BOARD_SIZE - 1) * step + r; // go to last tile on the board to find right edge of the rightmost tile
-        double topEdge = startCenterY - r; // finds the top edge of the board
-        double bottomEdge = startCenterY + (BOARD_SIZE - 1) * step + r;
+    private void drawOctagons(BoardLayout layout) {
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                double centerX = layout.startCenterX() + col * layout.stepBetweenCenters();
+                double centerY = layout.startCenterY() + row * layout.stepBetweenCenters();
 
-        double fontSize = Math.max(12, r * 0.55); // chooses the font size based on how big the board is
+                Polygon octagon = makeOctagon(centerX, centerY, layout.tileRadius(), layout.cornerCut());
+                octagon.setId("Octagon_" + row + "_" + col);
+                GameState.Player owner = gameState.getOctagonOwner(row, col);
+                octagon.setFill(owner == null ? EMPTY_OCTAGON_FILL : owner == GameState.Player.BLACK ? PIECE_BLACK_FILL : PIECE_WHITE_FILL);
+                octagon.setStroke(STROKE);
+                octagon.setOnMouseClicked(this::onCellClicked);
+
+                boardPane.getChildren().add(octagon);
+            }
+        }
+    }
+
+    private void drawRhombuses(BoardLayout layout) {
+        for (int row = 0; row < BOARD_SIZE - 1; row++) {
+            for (int col = 0; col < BOARD_SIZE - 1; col++) {
+                double centerX = layout.startCenterX() + col * layout.stepBetweenCenters() + layout.tileRadius();
+                double centerY = layout.startCenterY() + row * layout.stepBetweenCenters() + layout.tileRadius();
+
+                Polygon rhombus = makeDiamond(centerX, centerY, layout.diamondRadius());
+                rhombus.setId("Rhombus_" + row + "_" + col);
+                GameState.Player owner = gameState.getRhombusOwner(row, col);
+                rhombus.setFill(owner == null ? EMPTY_RHOMBUS_FILL : owner == GameState.Player.BLACK ? PIECE_BLACK_FILL : PIECE_WHITE_FILL);
+                rhombus.setStroke(STROKE);
+                rhombus.setOnMouseClicked(this::onCellClicked);
+
+                boardPane.getChildren().add(rhombus);
+            }
+        }
+    }
+
+    private void addColumnLabels(BoardLayout layout) {
+        double fontSize = Math.max(MIN_LABEL_FONT_SIZE, layout.tileRadius() * LABEL_FONT_SCALE);
+        double labelPadding = Math.max(MIN_LABEL_PADDING, layout.tileRadius() * LABEL_PADDING_SCALE);
         Font font = Font.font(fontSize);
 
-        double pad = Math.max(10, r * 0.6); // distance from the board edge
+        double topEdge = layout.startCenterY() - layout.tileRadius();
+        double bottomEdge = layout.startCenterY() + (BOARD_SIZE - 1) * layout.stepBetweenCenters() + layout.tileRadius();
 
-        // A–K top and bottom
-        for (int col = 0; col < BOARD_SIZE; col++) { // iterates through each column
-            char letter = (char) ('A' + col); // starts at character A
-            double cx = startCenterX + col * step; // finds the center of the columns tile center and moves right each time
+        for (int col = 0; col < BOARD_SIZE; col++) {
+            char letter = (char) ('A' + col);
+            double centerX = layout.startCenterX() + col * layout.stepBetweenCenters();
 
-            Text top = new Text(String.valueOf(letter)); // creates the top letter label
-            top.setFont(font); // sets font size
-            top.setFill(Color.web("#f8fafc")); // sets text colour
-            top.setX(cx - fontSize * 0.25); // moves slightly across so text is centered
-            top.setY(topEdge - pad); // place above the board edge
-            boardPane.getChildren().add(top); // add the letter to the pane
+            Text topLabel = new Text(String.valueOf(letter));
+            topLabel.setFont(font);
+            topLabel.setFill(LABEL_COLOR);
+            topLabel.setX(centerX - fontSize * HORIZONTAL_LABEL_OFFSET_SCALE);
+            topLabel.setY(topEdge - labelPadding);
+            boardPane.getChildren().add(topLabel);
 
-            Text bottom = new Text(String.valueOf(letter)); // creates the bottom letter label
-            bottom.setFont(font); // sets font size
-            bottom.setFill(Color.web("#f8fafc")); // sets font colour
-            bottom.setX(cx - fontSize * 0.25); // moves slightly across so text is centered
-            bottom.setY(bottomEdge + pad + fontSize * 0.35); // place below the board edge
-            boardPane.getChildren().add(bottom); // add the letter to the pane
-        }
-
-        // 1–11 left and right
-        for (int row = 0; row < BOARD_SIZE; row++) { // iterates through each row
-            String num = String.valueOf(row + 1); // starts at 1
-            double cy = startCenterY + row * step; // find center of each rows tile center and moves down each time
-
-            Text left = new Text(num); // creates the left number label
-            left.setFont(font); // sets font size
-            left.setFill(Color.web("#f8fafc")); // sets font colour
-            left.setX(leftEdge - pad - fontSize * 0.35); // centers text
-            left.setY(cy + fontSize * 0.35); // places to the left of the board edge
-            boardPane.getChildren().add(left); // adds the number to the pane
-
-            Text right = new Text(num); // creates the right number label
-            right.setFont(font); // sets the font size
-            right.setFill(Color.web("#f8fafc")); // sets the font colour
-            right.setX(rightEdge + pad); // centers the text
-            right.setY(cy + fontSize * 0.35); // places to the right of the board edge
-            boardPane.getChildren().add(right); // adds the number to the pane
+            Text bottomLabel = new Text(String.valueOf(letter));
+            bottomLabel.setFont(font);
+            bottomLabel.setFill(LABEL_COLOR);
+            bottomLabel.setX(centerX - fontSize * HORIZONTAL_LABEL_OFFSET_SCALE);
+            bottomLabel.setY(bottomEdge + labelPadding + fontSize * VERTICAL_LABEL_OFFSET_SCALE);
+            boardPane.getChildren().add(bottomLabel);
         }
     }
 
-    private void onCellClicked(MouseEvent e) { // click function so that when a shape gets clicked
+    private void addRowLabels(BoardLayout layout) {
+        double fontSize = Math.max(MIN_LABEL_FONT_SIZE, layout.tileRadius() * LABEL_FONT_SCALE);
+        double labelPadding = Math.max(MIN_LABEL_PADDING, layout.tileRadius() * LABEL_PADDING_SCALE);
+        Font font = Font.font(fontSize);
+
+        double leftEdge = layout.startCenterX() - layout.tileRadius();
+        double rightEdge = layout.startCenterX() + (BOARD_SIZE - 1) * layout.stepBetweenCenters() + layout.tileRadius();
+
+        for (int row = 0; row < BOARD_SIZE; row++) {
+            String number = String.valueOf(row + 1);
+            double centerY = layout.startCenterY() + row * layout.stepBetweenCenters();
+
+            Text leftLabel = new Text(number);
+            leftLabel.setFont(font);
+            leftLabel.setFill(LABEL_COLOR);
+            leftLabel.setX(leftEdge - labelPadding - fontSize * VERTICAL_LABEL_OFFSET_SCALE);
+            leftLabel.setY(centerY + fontSize * VERTICAL_LABEL_OFFSET_SCALE);
+            boardPane.getChildren().add(leftLabel);
+
+            Text rightLabel = new Text(number);
+            rightLabel.setFont(font);
+            rightLabel.setFill(LABEL_COLOR);
+            rightLabel.setX(rightEdge + labelPadding);
+            rightLabel.setY(centerY + fontSize * VERTICAL_LABEL_OFFSET_SCALE);
+            boardPane.getChildren().add(rightLabel);
+        }
+    }
+
+    private void onCellClicked(MouseEvent e) {
         if (!(e.getSource() instanceof Polygon clickedShape)) { // ensures that the thing clicked is a polygon (octagon or rhombus)
-            return; // if it's not, we stop immediately
+            return;
         }
 
-        String id = clickedShape.getId(); // gets the id
-        if (id == null) return; // if there is no id, we stop immediately
+        String id = clickedShape.getId();
+        if (id == null) return;
 
-        if(id.startsWith("Octagon_")) { // if the id starts with octagon
+        if(id.startsWith("Octagon_")) {
             String[] parts = id.split("_"); // we split the id by the underscores
             int row = Integer.parseInt(parts[1]); // grabs the second piece as row number
             int col = Integer.parseInt(parts[2]); // grabs the third piece as column number
 
-           var result = gameController.place(GameController.cellType.OCTAGON, row, col); // asks gameController to place an Octagon at that row
+           var result = gameController.place(GameController.CellType.OCTAGON, row, col);
 
-            if(!result.success()) return; // if the move fails (is invalid), we stop immediately
-            redraw(); // redraws the board so the move appears
-            updateTurnIndicator(); // updates the turn indicator
+            if(!result.success()) return;
+            redraw();
+            updateTurnIndicator();
+            updatePieRuleButton();
             return;
         }
 
-        if(id.startsWith("Rhombus_")) { // if the id starts with rhombus
-            String[] parts =  id.split("_"); // we split the id by the underscores
-            int row = Integer.parseInt(parts[1]); // grabs the second piece as row number
-            int col = Integer.parseInt(parts[2]); // grabs the third piece as column number
+        if(id.startsWith("Rhombus_")) {
+            String[] parts =  id.split("_");
+            int row = Integer.parseInt(parts[1]);
+            int col = Integer.parseInt(parts[2]);
 
-            var result = gameController.place(GameController.cellType.RHOMBUS, row, col); // asks gameController to place a rhombus
-            if (!result.success()) return; // if the move fails (is invalid), we stop immediately
-            redraw(); // redraws the board so the move appears
-            updateTurnIndicator(); // updates the turn indicator
+            var result = gameController.place(GameController.CellType.RHOMBUS, row, col);
+            if (!result.success()) return;
+            redraw();
+            updateTurnIndicator();
+            updatePieRuleButton();
         }
     }
 
-    private Polygon makeOctagon(double centerX, double centerY, double tileRadius, double cornerCut) { // creates an octagon made of 8 points
+    private Polygon makeOctagon(double centerX, double centerY, double tileRadius, double cornerCut) {
         return new Polygon(
                 centerX - cornerCut, centerY - tileRadius, // top left point
                 centerX + cornerCut, centerY - tileRadius, // top right point
@@ -278,12 +301,28 @@ public class BoardController { // controller for fxml file
         );
     }
 
-    private Polygon makeDiamond(double centerX, double centerY, double r) { // creates a rhombus made of 4 points
+    private Polygon makeDiamond(double centerX, double centerY, double diamondRadius) {
         return new Polygon(
-                centerX,     centerY - r, // top point
-                centerX + r, centerY, // right side point
-                centerX,     centerY + r, // bottom point
-                centerX - r, centerY // left side point
+                centerX,     centerY - diamondRadius, // top point
+                centerX + diamondRadius, centerY, // right side point
+                centerX,     centerY + diamondRadius, // bottom point
+                centerX - diamondRadius, centerY // left side point
         );
+    }
+
+    private void updatePieRuleButton() {
+        boolean canUse = gameController.canUsePieRule();
+        pieRuleButton.setVisible(canUse);
+        pieRuleButton.setManaged(canUse);
+    }
+
+    @FXML
+    private void onPieRuleClicked() {
+        var result = gameController.activatePieRule();
+        if (!result.success()) return;
+
+        updateTurnIndicator();
+        updatePieRuleButton();
+        redraw();
     }
 }

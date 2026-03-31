@@ -11,10 +11,10 @@ class Sprint2GameControllerTests {
         GameState state = new GameState(11);
         GameController controller = new GameController(state);
 
-        var result = controller.place(GameController.cellType.OCTAGON, 3, 4);
+        var result = controller.place(GameController.CellType.OCTAGON, 3, 4);
 
         assertTrue(result.success(), "Expected move to succeed");
-        assertEquals(GameState.Player.BLACK, state.getOctOwner(3, 4), "Cell should be owned by BLACK");
+        assertEquals(GameState.Player.BLACK, state.getOctagonOwner(3, 4), "Cell should be owned by BLACK");
         assertEquals(GameState.Player.WHITE, state.getCurrentPlayer(), "Turn should switch to WHITE");
     }
 
@@ -23,12 +23,12 @@ class Sprint2GameControllerTests {
         GameState state = new GameState(11);
         GameController controller = new GameController(state);
 
-        assertTrue(controller.place(GameController.cellType.OCTAGON, 0, 0).success());
+        assertTrue(controller.place(GameController.CellType.OCTAGON, 0, 0).success());
 
-        var result = controller.place(GameController.cellType.OCTAGON, 0, 0);
+        var result = controller.place(GameController.CellType.OCTAGON, 0, 0);
         assertFalse(result.success(), "Expected move to fail on occupied cell");
 
-        assertEquals(GameState.Player.BLACK, state.getOctOwner(0, 0));
+        assertEquals(GameState.Player.BLACK, state.getOctagonOwner(0, 0));
     }
 
     @Test
@@ -36,10 +36,10 @@ class Sprint2GameControllerTests {
         GameState state = new GameState(11);
         GameController controller = new GameController(state);
 
-        var result = controller.place(GameController.cellType.RHOMBUS, 2, 2);
+        var result = controller.place(GameController.CellType.RHOMBUS, 2, 2);
 
         assertTrue(result.success(), "Expected move to succeed");
-        assertEquals(GameState.Player.BLACK, state.getRhoOwner(2, 2), "Rhombus should be owned by BLACK");
+        assertEquals(GameState.Player.BLACK, state.getRhombusOwner(2, 2), "Rhombus should be owned by BLACK");
         assertEquals(GameState.Player.WHITE, state.getCurrentPlayer(), "Turn should switch to WHITE");
     }
 
@@ -48,12 +48,12 @@ class Sprint2GameControllerTests {
         GameState state = new GameState(11);
         GameController controller = new GameController(state);
 
-        assertTrue(controller.place(GameController.cellType.RHOMBUS, 1, 1).success());
+        assertTrue(controller.place(GameController.CellType.RHOMBUS, 1, 1).success());
 
-        var result = controller.place(GameController.cellType.RHOMBUS, 1, 1);
+        var result = controller.place(GameController.CellType.RHOMBUS, 1, 1);
         assertFalse(result.success(), "Expected move to fail on occupied rhombus");
 
-        assertEquals(GameState.Player.BLACK, state.getRhoOwner(1, 1));
+        assertEquals(GameState.Player.BLACK, state.getRhombusOwner(1, 1));
     }
 
     @Test
@@ -61,7 +61,7 @@ class Sprint2GameControllerTests {
         GameState state = new GameState(11);
         GameController controller = new GameController(state);
 
-        var result = controller.place(GameController.cellType.RHOMBUS, 10, 0);
+        var result = controller.place(GameController.CellType.RHOMBUS, 10, 0);
         assertFalse(result.success(), "Expected out-of-bounds rhombus move to fail");
     }
 
@@ -70,9 +70,9 @@ class Sprint2GameControllerTests {
         GameState state = new GameState(11);
         GameController controller = new GameController(state);
 
-        assertTrue(controller.place(GameController.cellType.OCTAGON, 10, 10).success());
+        assertTrue(controller.place(GameController.CellType.OCTAGON, 10, 10).success());
 
-        var result = controller.place(GameController.cellType.OCTAGON, 11, 0);
+        var result = controller.place(GameController.CellType.OCTAGON, 11, 0);
         assertFalse(result.success(), "Expected out-of-bounds octagon move to fail");
     }
 }

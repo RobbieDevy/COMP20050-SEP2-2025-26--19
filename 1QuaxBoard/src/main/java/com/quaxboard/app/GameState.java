@@ -1,63 +1,102 @@
 package com.quaxboard.app;
 
-/*
-GameState is the data holder for the game.
-Stores board size, who owns each cell, and whose turn it is.
-Has methods to get/set cell owners, check if a cell is empty, and get current player
-Switches turn between BLACK AND WHITE.
- */
 public class GameState {
-    public enum Player { // enum for black and white player
+    public enum Player {
         BLACK, WHITE;
 
-        public Player next() { // returns which player comes next
-            return this == BLACK ? WHITE : BLACK; // if the current player is black, return white, otherwise return black
+        public Player next() {
+            return this == BLACK ? WHITE : BLACK;
         }
     }
 
-    private final int boardSize; // stores board size
-    private final Player[][] octOwner; // octOwner is a 2D array for who owns each octagon
-    private final Player[][] rhoOwner; // rhoOwner is a 2D array for who owns each rhombus
-    private Player currentPlayer = Player.BLACK; // current player is black
+    // Player represents colour of who is to play, HumanPlayer represents the player that owns that colour.
+    // this was implemented to ensure the pie rule works correctly.
+    public enum HumanPlayer {
+        PLAYER_1, PLAYER_2
+    }
 
-    public GameState(int boardSize) { // constructor for GameState
-        this.boardSize = boardSize; // saves board size
-        this.octOwner = new Player[boardSize][boardSize]; // creates octagon owner grid
-        this.rhoOwner = new Player[boardSize - 1][boardSize - 1]; // creates rhombus owner grid
+    private final int boardSize;
+    private final Player[][] octagonOwners;
+    private final Player[][] rhombusOwners;
+    private Player currentPlayer = Player.BLACK;
+    private int moveCount = 0;
+    private boolean pieRuleUsed = false;
+
+    private HumanPlayer blackPlayer = HumanPlayer.PLAYER_1;
+    private HumanPlayer whitePlayer = HumanPlayer.PLAYER_2;
+
+    public HumanPlayer getBlackPlayer() {
+        return blackPlayer;
+    }
+
+    public HumanPlayer getWhitePlayer() {
+        return whitePlayer;
+    }
+
+    public HumanPlayer getPlayerForColour(Player colour) {
+        return colour == Player.BLACK ? blackPlayer : whitePlayer;
+    }
+
+    public GameState(int boardSize) {
+        this.boardSize = boardSize;
+        this.octagonOwners = new Player[boardSize][boardSize];
+        this.rhombusOwners = new Player[boardSize - 1][boardSize - 1];
     }
 
     public int getBoardSize() {
         return boardSize;
-    } // returns board size
+    }
 
     public Player getCurrentPlayer() {
         return currentPlayer;
-    } // returns current player
+    }
 
     public void switchTurn() {
         currentPlayer = currentPlayer.next();
-    } // switches player turn
+    }
 
-    public Player getOctOwner(int row, int col) {
-        return octOwner[row][col];
-    } // returns who owns octagon cell
+    public Player getOctagonOwner(int row, int col) {
+        return octagonOwners[row][col];
+    }
 
-    public boolean isOctEmpty(int row, int col) {
-        return octOwner[row][col] == null;
-    } // returns if octagon cell is empty or not
+    public boolean isOctagonEmpty(int row, int col) {
+        return octagonOwners[row][col] == null;
+    }
 
-    public void setOctOwner(int row, int col, Player player) {
-        octOwner[row][col] = player;
-    } // sets who owns octagon cell
+    public void setOctagonOwner(int row, int col, Player player) {
+        octagonOwners[row][col] = player;
+    }
 
-    public Player getRhoOwner(int row, int col) {
-        return rhoOwner[row][col];
-    } // returns who owns rhombus cell
+    public Player getRhombusOwner(int row, int col) {
+        return rhombusOwners[row][col];
+    }
 
-    public boolean isRhoEmpty(int row, int col) {
-        return rhoOwner[row][col] == null;
-    } // returns if rhombus cell is empty or not
-    public void setRhoOwner(int row, int col, Player player) {
-        rhoOwner[row][col] = player;
-    } // sets who owns rhombus cell
+    public boolean isRhombusEmpty(int row, int col) {
+        return rhombusOwners[row][col] == null;
+    }
+
+    public void setRhombusOwner(int row, int col, Player player) {
+        rhombusOwners[row][col] = player;
+    }
+
+    public void recordSuccessfulMove() {
+        moveCount++;
+    }
+
+    // Pie rule is only available after first move, when White is to play.
+    public boolean canUsePieRule() {
+        return moveCount == 1 && !pieRuleUsed && currentPlayer == Player.WHITE;
+    }
+
+    public void usePieRule() {
+        if (!canUsePieRule()) {
+            throw new IllegalStateException("Pie rule not available");
+        }
+
+        HumanPlayer originalOwner = blackPlayer;
+        blackPlayer = whitePlayer;
+        whitePlayer = originalOwner;
+
+        pieRuleUsed = true;
+    }
 }

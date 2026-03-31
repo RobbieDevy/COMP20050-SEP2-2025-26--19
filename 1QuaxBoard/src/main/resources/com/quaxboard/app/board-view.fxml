@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
@@ -49,6 +50,12 @@
                            style="-fx-text-fill: #f8fafc; -fx-font-size: 13; -fx-font-weight: 700;"/>
                     <!-- shows whose turn it. id lets the BoardController access it so it can be changed later -->
                 </HBox>
+                <Button
+                        fx:id="pieRuleButton"
+                        text="Pie Rule"
+                        onAction="#onPieRuleClicked"
+                        visible="false"
+                        managed="false" />
             </HBox>
         </VBox>
     </top>
@@ -76,5 +83,4 @@
             </StackPane>
         </StackPane>
     </center>
-
 </BorderPane>

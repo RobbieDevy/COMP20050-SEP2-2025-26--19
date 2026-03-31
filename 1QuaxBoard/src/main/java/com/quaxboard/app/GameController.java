@@ -1,18 +1,14 @@
 package com.quaxboard.app;
 
-/*
-GameController is the rules manager.
-It receives a move request to place a piece.
-Uses GameState to ensure the clicked object is on the board and is not empty.
- */
 public class GameController {
-    public enum cellType { // an enum for each shape
-        OCTAGON, RHOMBUS;
+    public enum CellType {
+        OCTAGON,
+        RHOMBUS
     }
 
-    public record MoveResult(boolean success) {} // defines move result
+    public record MoveResult(boolean success) {}
 
-    private final GameState state; // stores game state
+    private final GameState state;
 
     public GameController(GameState state) {
         this.state = state;
@@ -20,37 +16,59 @@ public class GameController {
 
     public GameState.Player currentPlayer() {
         return state.getCurrentPlayer();
-    } // returns current player
+    }
 
-    public MoveResult place(cellType type, int row, int col) {
-        if(type == cellType.OCTAGON) { // if the cell type is OCTAGON
-            // we check if row and column are oustide the board boundaries
-            if (row < 0 || row >= state.getBoardSize() || col < 0 || col >= state.getBoardSize()) {
-                return new MoveResult(false); // if they are, return false for moveResult
-            }
+    public MoveResult place(CellType type, int row, int col) {
+        return switch (type) {
+            case OCTAGON -> placeOctagon(row, col);
+            case RHOMBUS -> placeRhombus(row, col);
+        };
+    }
 
-            if(!state.isOctEmpty(row, col)) { // if the octagon cell is not empty
-                return new MoveResult(false); // return false for moveResult
-            }
+    public boolean canUsePieRule() {
+        return state.canUsePieRule();
+    }
 
-            state.setOctOwner(row, col, state.getCurrentPlayer()); // set octagon cell owner to current player
-            state.switchTurn(); // switch turn to other player
-            return new MoveResult(true); // return true for moveResult
+    public MoveResult activatePieRule() {
+        if (!canUsePieRule()) {
+            return new MoveResult(false);
         }
-        if(type == cellType.RHOMBUS) { // if the cell type is RHOMBUS
-            int n = state.getBoardSize() - 1; // board size minus 1 for the rhombus grid
-            // if row and column are outside the the board boundaries
-            if (row < 0 || row >= n || col < 0 || col >= n) {
-                return new MoveResult(false); // return false for moveResult
-            }
-            if(!state.isRhoEmpty(row, col)) { // if the rhombus cell is not empty
-                return new MoveResult(false); // return false for moveResult
-            }
 
-            state.setRhoOwner(row, col, state.getCurrentPlayer()); // set rhombus cell owner to current player
-            state.switchTurn(); // switch turn to other player
-            return new MoveResult(true); // return true for moveResult
+        state.usePieRule();
+        return new MoveResult(true);
+    }
+
+    private MoveResult placeOctagon(int row, int col) {
+        if (isOutsideOctagonBoard(row, col) || !state.isOctagonEmpty(row, col)) {
+            return new MoveResult(false);
         }
-        return null;
+
+        state.setOctagonOwner(row, col, state.getCurrentPlayer());
+        return completeSuccessfulMove();
+    }
+
+    private MoveResult placeRhombus(int row, int col) {
+        if (isOutsideRhombusBoard(row, col) || !state.isRhombusEmpty(row, col)) {
+            return new MoveResult(false);
+        }
+
+        state.setRhombusOwner(row, col, state.getCurrentPlayer());
+        return completeSuccessfulMove();
+    }
+
+    private boolean isOutsideOctagonBoard(int row, int col) {
+        int boardSize = state.getBoardSize();
+        return row < 0 || row >= boardSize || col < 0 || col >= boardSize;
+    }
+
+    private boolean isOutsideRhombusBoard(int row, int col) {
+        int rhombusGridSize = state.getBoardSize() - 1;
+        return row < 0 || row >= rhombusGridSize || col < 0 || col >= rhombusGridSize;
+    }
+
+    private MoveResult completeSuccessfulMove() {
+        state.switchTurn();
+        state.recordSuccessfulMove();
+        return new MoveResult(true);
     }
 }
