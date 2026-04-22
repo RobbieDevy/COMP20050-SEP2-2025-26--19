@@ -56,6 +56,12 @@
                         onAction="#onPieRuleClicked"
                         visible="false"
                         managed="false" />
+
+                <Button fx:id="strategyButton"
+                        text="Show Strategy"
+                        onAction="#onStrategyButtonClicked" />
+
+                <Label fx:id="strategyLabel" />
             </HBox>
         </VBox>
     </top>

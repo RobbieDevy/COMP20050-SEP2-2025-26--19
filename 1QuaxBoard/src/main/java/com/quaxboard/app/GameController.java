@@ -6,7 +6,10 @@ public class GameController {
         RHOMBUS
     }
 
-    public record MoveResult(boolean success) {}
+
+    public record MoveResult(boolean success, GameState.Player winner) {}
+
+    public record BotMove(CellType cellType, int row, int col, String strategy) {}
 
     private final GameState state;
 
@@ -31,29 +34,31 @@ public class GameController {
 
     public MoveResult activatePieRule() {
         if (!canUsePieRule()) {
-            return new MoveResult(false);
+            return new MoveResult(false, null);
         }
 
         state.usePieRule();
-        return new MoveResult(true);
+        return new MoveResult(true, null);
     }
 
     private MoveResult placeOctagon(int row, int col) {
         if (isOutsideOctagonBoard(row, col) || !state.isOctagonEmpty(row, col)) {
-            return new MoveResult(false);
+            return new MoveResult(false, null);
         }
 
-        state.setOctagonOwner(row, col, state.getCurrentPlayer());
-        return completeSuccessfulMove();
+        GameState.Player mover = state.getCurrentPlayer();
+        state.setOctagonOwner(row, col, mover);
+        return completeSuccessfulMove(mover);
     }
 
     private MoveResult placeRhombus(int row, int col) {
         if (isOutsideRhombusBoard(row, col) || !state.isRhombusEmpty(row, col)) {
-            return new MoveResult(false);
+            return new MoveResult(false, null);
         }
 
-        state.setRhombusOwner(row, col, state.getCurrentPlayer());
-        return completeSuccessfulMove();
+        GameState.Player mover = state.getCurrentPlayer();
+        state.setRhombusOwner(row, col, mover);
+        return completeSuccessfulMove(mover);
     }
 
     private boolean isOutsideOctagonBoard(int row, int col) {
@@ -66,9 +71,15 @@ public class GameController {
         return row < 0 || row >= rhombusGridSize || col < 0 || col >= rhombusGridSize;
     }
 
-    private MoveResult completeSuccessfulMove() {
-        state.switchTurn();
+    private MoveResult completeSuccessfulMove(GameState.Player mover) {
         state.recordSuccessfulMove();
-        return new MoveResult(true);
+
+        if (state.hasWinningChain(mover)) {
+            state.setWinner(mover);
+            return new MoveResult(true, mover);
+        }
+
+        state.switchTurn();
+        return new MoveResult(true, null);
     }
 }

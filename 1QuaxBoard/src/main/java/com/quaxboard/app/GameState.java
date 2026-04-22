@@ -21,6 +21,7 @@ public class GameState {
     private Player currentPlayer = Player.BLACK;
     private int moveCount = 0;
     private boolean pieRuleUsed = false;
+    private Player winner = null;
 
     private HumanPlayer blackPlayer = HumanPlayer.PLAYER_1;
     private HumanPlayer whitePlayer = HumanPlayer.PLAYER_2;
@@ -83,6 +84,18 @@ public class GameState {
         moveCount++;
     }
 
+    public Player getWinner() {
+        return winner;
+    }
+
+    public boolean isGameOver() {
+        return winner != null;
+    }
+
+    public void setWinner(Player winner) {
+        this.winner = winner;
+    }
+
     // Pie rule is only available after first move, when White is to play.
     public boolean canUsePieRule() {
         return moveCount == 1 && !pieRuleUsed && currentPlayer == Player.WHITE;
@@ -98,5 +111,73 @@ public class GameState {
         whitePlayer = originalOwner;
 
         pieRuleUsed = true;
+    }
+
+    public boolean hasWinningChain(Player player) {
+        boolean[][] visitedOctagons = new boolean[boardSize][boardSize];
+        boolean[][] visitedRhombuses = new boolean[boardSize - 1][boardSize - 1];
+
+        if (player == Player.BLACK) {
+            for (int col = 0; col < boardSize; col++) {
+                if (dfsOctagon(player, 0, col, visitedOctagons, visitedRhombuses)) {
+                    return true;
+                }
+            }
+        } else {
+            for (int row = 0; row < boardSize; row++) {
+                if (dfsOctagon(player, row, 0, visitedOctagons, visitedRhombuses)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean dfsOctagon(
+            Player player,
+            int row,
+            int col,
+            boolean[][] visitedOctagons,
+            boolean[][] visitedRhombuses
+    ) {
+        if (row < 0 || row >= boardSize || col < 0 || col >= boardSize) return false;
+        if (visitedOctagons[row][col]) return false;
+        if (getOctagonOwner(row, col) != player) return false;
+
+        visitedOctagons[row][col] = true;
+
+        if (player == Player.BLACK && row == boardSize - 1) return true;
+        if (player == Player.WHITE && col == boardSize - 1) return true;
+
+        return
+                dfsOctagon(player, row - 1, col, visitedOctagons, visitedRhombuses) ||
+                        dfsOctagon(player, row + 1, col, visitedOctagons, visitedRhombuses) ||
+                        dfsOctagon(player, row, col - 1, visitedOctagons, visitedRhombuses) ||
+                        dfsOctagon(player, row, col + 1, visitedOctagons, visitedRhombuses) ||
+                        dfsRhombus(player, row - 1, col - 1, visitedOctagons, visitedRhombuses) ||
+                        dfsRhombus(player, row - 1, col, visitedOctagons, visitedRhombuses) ||
+                        dfsRhombus(player, row, col - 1, visitedOctagons, visitedRhombuses) ||
+                        dfsRhombus(player, row, col, visitedOctagons, visitedRhombuses);
+    }
+
+    private boolean dfsRhombus(
+            Player player,
+            int row,
+            int col,
+            boolean[][] visitedOctagons,
+            boolean[][] visitedRhombuses
+    ) {
+        if (row < 0 || row >= boardSize - 1 || col < 0 || col >= boardSize - 1) return false;
+        if (visitedRhombuses[row][col]) return false;
+        if (getRhombusOwner(row, col) != player) return false;
+
+        visitedRhombuses[row][col] = true;
+
+        return
+                dfsOctagon(player, row, col, visitedOctagons, visitedRhombuses) ||
+                        dfsOctagon(player, row, col + 1, visitedOctagons, visitedRhombuses) ||
+                        dfsOctagon(player, row + 1, col, visitedOctagons, visitedRhombuses) ||
+                        dfsOctagon(player, row + 1, col + 1, visitedOctagons, visitedRhombuses);
     }
 }

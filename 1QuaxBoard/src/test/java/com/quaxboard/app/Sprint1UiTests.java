@@ -91,6 +91,6 @@ public class Sprint1UiTests extends ApplicationTest {
     @Test
     void SR1_turnIndicatorShowsBlackToPlay() {
         Label turnLabel = lookup("#turnLabel").queryAs(Label.class);
-        assertEquals("BLACK to play", turnLabel.getText());
+        assertEquals("BLACK (Player 1) to play", turnLabel.getText());
     }
 }

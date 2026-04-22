@@ -1,5 +1,6 @@
 package com.quaxboard.app;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
@@ -12,6 +13,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.scene.control.Button;
+import javafx.util.Duration;
 
 public class BoardController {
     private static final int BOARD_SIZE = 11;
@@ -33,7 +35,6 @@ public class BoardController {
     private static final double VERTICAL_LABEL_OFFSET_SCALE = 0.35;
 
     public enum GameMode {
-        HUMAN_VS_HUMAN("Human vs Human"),
         HUMAN_VS_BOT("Human vs Bot");
 
         private final String label;
@@ -55,36 +56,100 @@ public class BoardController {
     @FXML private Label turnLabel;
     @FXML private ComboBox<GameMode> modeCombo;
     @FXML private Button pieRuleButton;
+    @FXML private Button strategyButton;
+    @FXML private Label strategyLabel;
+
+    private static final boolean DEVELOPMENT_MODE = true;
+    private boolean showStrategy = false;
+    private BotPlayer.BotStrategy strategyInfo = null;
 
     private final GameState gameState = new GameState(BOARD_SIZE);
     private final GameController gameController = new GameController(gameState);
+    private final BotPlayer botPlayer = new BotPlayer(gameState);
+
+    private static final GameState.HumanPlayer BOT_PLAYER = GameState.HumanPlayer.PLAYER_2;
+    private boolean botMoveInProgress = false;
 
     private void updateTurnIndicator() {
+        if (gameState.isGameOver()) {
+            turnLabel.setText(gameState.getWinner() + " wins.");
+            return;
+        }
+
         GameState.Player colour = gameController.currentPlayer();
-        GameState.HumanPlayer human = gameState.getPlayerForColour(colour);
-        String playerText = (human == GameState.HumanPlayer.PLAYER_1) ? "Player 1" : "Player 2";
-        turnLabel.setText(colour + " (" + playerText + ") to play");
+        GameState.HumanPlayer owner = gameState.getPlayerForColour(colour);
+        String side = (owner == BOT_PLAYER) ? "Bot" : "Human";
+        turnLabel.setText(colour + " (" + side + ") to play");
     }
 
     @FXML
     private void initialize() { // javafx runs after fxml loads - used for setting up UI and drawing the board
         setupModeUI();
+        setupStrategyUI();
         updatePieRuleButton();
         Platform.runLater(this::redraw);
         resizer();
     }
 
     private void setupModeUI() {
-        modeCombo.getItems().setAll(GameMode.HUMAN_VS_HUMAN, GameMode.HUMAN_VS_BOT);
-        modeCombo.setValue(GameMode.HUMAN_VS_HUMAN);
+        modeCombo.getItems().setAll(GameMode.HUMAN_VS_BOT);
+        modeCombo.setValue(GameMode.HUMAN_VS_BOT);
         applyMode(modeCombo.getValue());
 
+        /* FOR HUMAN VS HUMAN MODE
         modeCombo.valueProperty().addListener((obs, oldMode, newMode) -> { // whenever user picks new dropdown option, call applyMode again
             if (newMode != null) applyMode(newMode);
         });
+        */
 
+        modeCombo.setVisible(false);
+        modeCombo.setManaged(false);
+
+        applyMode(GameMode.HUMAN_VS_BOT);
         updateTurnIndicator();
         updatePieRuleButton();
+    }
+
+    private void setupStrategyUI() {
+        if (!DEVELOPMENT_MODE) {
+            if (strategyButton != null) {
+                strategyButton.setVisible(false);
+                strategyButton.setManaged(false);
+            }
+            if (strategyLabel != null) {
+                strategyLabel.setVisible(false);
+                strategyLabel.setManaged(false);
+            }
+            return;
+        }
+
+        updateStrategyUI();
+    }
+
+    private void updateStrategyUI() {
+        if (!DEVELOPMENT_MODE) return;
+
+        if (strategyButton != null) {
+            strategyButton.setText(showStrategy ? "Hide Strategy" : "Show Strategy");
+        }
+
+        if (strategyLabel != null) {
+            if (showStrategy && strategyInfo != null) {
+                strategyLabel.setText(strategyInfo.title() + ": " + strategyInfo.description());
+            } else {
+                strategyLabel.setText("");
+            }
+        }
+    }
+
+    @FXML
+    private void onStrategyButtonClicked() {
+        showStrategy = !showStrategy;
+        if (showStrategy) {
+            strategyInfo = botPlayer.peekStrategy();
+        }
+        updateStrategyUI();
+        redraw();
     }
 
     private void resizer() {
@@ -105,6 +170,39 @@ public class BoardController {
         });
     }
 
+    private boolean isBotTurn() {
+        if (gameState.isGameOver()) return false;
+        GameState.Player colour = gameController.currentPlayer();
+        return gameState.getPlayerForColour(colour) == BOT_PLAYER;
+    }
+
+    private void makeBotMove() {
+        if (gameState.isGameOver() || !isBotTurn() || botMoveInProgress) return;
+
+        botMoveInProgress = true;
+        strategyInfo = botPlayer.peekStrategy();
+        updateStrategyUI();
+
+        if (showStrategy) {
+            redraw();
+        }
+
+        PauseTransition pause = new PauseTransition(Duration.millis(showStrategy ? 900 : 300));
+        pause.setOnFinished(event -> {
+            try {
+                botPlayer.makeMove(gameController);
+                strategyInfo = null;
+                redraw();
+                updateTurnIndicator();
+                updatePieRuleButton();
+                updateStrategyUI();
+            } finally {
+                botMoveInProgress = false;
+            }
+        });
+        pause.play();
+    }
+
     private void redraw() {
         boardPane.getChildren().clear();
 
@@ -115,8 +213,32 @@ public class BoardController {
 
         drawOctagons(layout);
         drawRhombuses(layout);
+        drawStrategyOverlay(layout);
         addColumnLabels(layout);
         addRowLabels(layout);
+    }
+
+    private void drawStrategyOverlay(BoardLayout layout) {
+        if (!showStrategy || strategyInfo == null) return;
+
+        Polygon overlay;
+
+        if (strategyInfo.cellType() == GameController.CellType.OCTAGON) {
+            double centerX = layout.startCenterX() + strategyInfo.col() * layout.stepBetweenCenters();
+            double centerY = layout.startCenterY() + strategyInfo.row() * layout.stepBetweenCenters();
+            overlay = makeOctagon(centerX, centerY, layout.tileRadius(), layout.cornerCut());
+        } else {
+            double centerX = layout.startCenterX() + strategyInfo.col() * layout.stepBetweenCenters() + layout.tileRadius();
+            double centerY = layout.startCenterY() + strategyInfo.row() * layout.stepBetweenCenters() + layout.tileRadius();
+            overlay = makeDiamond(centerX, centerY, layout.diamondRadius());
+        }
+
+        overlay.setFill(Color.color(0.2, 1.0, 0.2, 0.25));
+        overlay.setStroke(Color.LIMEGREEN);
+        overlay.setStrokeWidth(4);
+        overlay.setMouseTransparent(true);
+
+        boardPane.getChildren().add(overlay);
     }
 
     private BoardLayout calculateBoardLayout() {
@@ -253,29 +375,32 @@ public class BoardController {
     }
 
     private void onCellClicked(MouseEvent e) {
-        if (!(e.getSource() instanceof Polygon clickedShape)) { // ensures that the thing clicked is a polygon (octagon or rhombus)
+        if (gameState.isGameOver() || isBotTurn() || botMoveInProgress) return;
+
+        if (!(e.getSource() instanceof Polygon clickedShape)) {
             return;
         }
 
         String id = clickedShape.getId();
         if (id == null) return;
 
-        if(id.startsWith("Octagon_")) {
-            String[] parts = id.split("_"); // we split the id by the underscores
+        if (id.startsWith("Octagon_")) {
+            String[] parts = id.split("_");
             int row = Integer.parseInt(parts[1]); // grabs the second piece as row number
             int col = Integer.parseInt(parts[2]); // grabs the third piece as column number
 
-           var result = gameController.place(GameController.CellType.OCTAGON, row, col);
+            var result = gameController.place(GameController.CellType.OCTAGON, row, col);
 
-            if(!result.success()) return;
+            if (!result.success()) return;
             redraw();
             updateTurnIndicator();
             updatePieRuleButton();
+            makeBotMove();
             return;
         }
 
-        if(id.startsWith("Rhombus_")) {
-            String[] parts =  id.split("_");
+        if (id.startsWith("Rhombus_")) {
+            String[] parts = id.split("_");
             int row = Integer.parseInt(parts[1]);
             int col = Integer.parseInt(parts[2]);
 
@@ -284,6 +409,7 @@ public class BoardController {
             redraw();
             updateTurnIndicator();
             updatePieRuleButton();
+            makeBotMove();
         }
     }
 
@@ -311,18 +437,21 @@ public class BoardController {
     }
 
     private void updatePieRuleButton() {
-        boolean canUse = gameController.canUsePieRule();
+        boolean canUse = gameController.canUsePieRule() && !isBotTurn() && !botMoveInProgress;
         pieRuleButton.setVisible(canUse);
         pieRuleButton.setManaged(canUse);
     }
 
     @FXML
     private void onPieRuleClicked() {
+        if (isBotTurn() || botMoveInProgress) return;
+
         var result = gameController.activatePieRule();
         if (!result.success()) return;
 
         updateTurnIndicator();
         updatePieRuleButton();
         redraw();
+        makeBotMove();
     }
 }
