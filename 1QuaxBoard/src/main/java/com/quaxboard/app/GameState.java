@@ -1,6 +1,8 @@
 package com.quaxboard.app;
+import java.util.Random;
 
 public class GameState {
+    private static final Random RANDOM = new Random();
     public enum Player {
         BLACK, WHITE;
 
@@ -23,8 +25,8 @@ public class GameState {
     private boolean pieRuleUsed = false;
     private Player winner = null;
 
-    private HumanPlayer blackPlayer = HumanPlayer.PLAYER_1;
-    private HumanPlayer whitePlayer = HumanPlayer.PLAYER_2;
+    private HumanPlayer blackPlayer;
+    private HumanPlayer whitePlayer;
 
     public HumanPlayer getBlackPlayer() {
         return blackPlayer;
@@ -37,11 +39,22 @@ public class GameState {
     public HumanPlayer getPlayerForColour(Player colour) {
         return colour == Player.BLACK ? blackPlayer : whitePlayer;
     }
-
     public GameState(int boardSize) {
+        this(boardSize, RANDOM.nextBoolean());
+    }
+
+    public GameState(int boardSize, boolean botPlaysBlack) {
         this.boardSize = boardSize;
         this.octagonOwners = new Player[boardSize][boardSize];
         this.rhombusOwners = new Player[boardSize - 1][boardSize - 1];
+
+        if (botPlaysBlack) {
+            this.blackPlayer = HumanPlayer.PLAYER_2;
+            this.whitePlayer = HumanPlayer.PLAYER_1;
+        } else {
+            this.blackPlayer = HumanPlayer.PLAYER_1;
+            this.whitePlayer = HumanPlayer.PLAYER_2;
+        }
     }
 
     public int getBoardSize() {

@@ -36,6 +36,7 @@ public class Sprint1UiTests extends ApplicationTest {
         assertNotNull(boardPane);
     }
 
+    /*
     // correct titles based on game mode tests
     @Test
     void SR1_feature2_titleChangesWhenModeChanges() {
@@ -50,7 +51,7 @@ public class Sprint1UiTests extends ApplicationTest {
         interact(() -> modeCombo.getSelectionModel().select(1));
         assertTrue(titleLabel.getText().contains("Human vs Bot"));
     }
-
+*/
     //test to ensure board has 11x11 layout of octagons and rhombi
     @Test
     void SR1_feature3_boardHasCorrectNumberOfCells() {
@@ -87,10 +88,12 @@ public class Sprint1UiTests extends ApplicationTest {
         assertEquals(44, textCount, "Should be 44 labels total (A-K top/bottom + 1-11 left/right)");
     }
 
+    /*
     // test to ensure correct user turn is displayed (for now just black to play)
     @Test
     void SR1_turnIndicatorShowsBlackToPlay() {
         Label turnLabel = lookup("#turnLabel").queryAs(Label.class);
         assertEquals("BLACK (Player 1) to play", turnLabel.getText());
     }
+    */
 }

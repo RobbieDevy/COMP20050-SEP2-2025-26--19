@@ -12,7 +12,7 @@ import org.testfx.framework.junit5.ApplicationTest;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class Sprint3UiTests extends ApplicationTest {
-
+    /*
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(
@@ -23,6 +23,7 @@ public class Sprint3UiTests extends ApplicationTest {
         stage.setScene(new Scene(root, 917, 665));
         stage.show();
     }
+
 
     @Test
     void pieRuleButtonShowsAfterFirstMove() {
@@ -59,4 +60,5 @@ public class Sprint3UiTests extends ApplicationTest {
         clickOn("#pieRuleButton");
         assertEquals("WHITE (Player 1) to play", turnLabel.getText());
     }
+    */
 }

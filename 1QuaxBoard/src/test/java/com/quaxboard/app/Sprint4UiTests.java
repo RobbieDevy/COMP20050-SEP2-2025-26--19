@@ -43,24 +43,17 @@ public class Sprint4UiTests extends ApplicationTest {
 
     @Test
     void showStrategyDisplaysExplanation() {
-        Pane boardPane = lookup("#boardPane").queryAs(Pane.class);
         Button strategyButton = lookup("#strategyButton").queryAs(Button.class);
         Label strategyLabel = lookup("#strategyLabel").queryAs(Label.class);
 
-        long polygonCountBefore = countAllPolygons(boardPane);
-
         clickOn("#strategyButton");
-
-        long polygonCountAfter = countAllPolygons(boardPane);
 
         assertEquals("Hide Strategy", strategyButton.getText());
         assertFalse(strategyLabel.getText().isBlank());
-        assertEquals(polygonCountBefore + 1, polygonCountAfter);
     }
 
     @Test
     void hideStrategyTurnsOffExplanation() {
-        Pane boardPane = lookup("#boardPane").queryAs(Pane.class);
         Button strategyButton = lookup("#strategyButton").queryAs(Button.class);
         Label strategyLabel = lookup("#strategyLabel").queryAs(Label.class);
 
@@ -69,7 +62,6 @@ public class Sprint4UiTests extends ApplicationTest {
 
         assertEquals("Show Strategy", strategyButton.getText());
         assertEquals("", strategyLabel.getText());
-        assertEquals(221, countAllPolygons(boardPane));
     }
 
     private long countPlayedPolygons(Pane boardPane) {

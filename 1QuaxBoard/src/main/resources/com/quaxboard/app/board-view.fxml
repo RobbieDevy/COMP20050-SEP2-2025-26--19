@@ -10,83 +10,100 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.quaxboard.app.BoardController"
-            style="-fx-background-color: linear-gradient(to bottom, #111827, #0b1220);">
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.quaxboard.app.BoardController">
 
-    <top>
-        <!-- top displays the game title, game mode, as well as whose turn it is to play. uses Vbox so elements are stacked vertically -->
-        <VBox spacing="10" style="-fx-padding: 18 22 14 22;"> <!-- Vbox stacks items vertically -->
-            <!-- Title -->
-            <Label fx:id="titleLabel"
-                   text="Quax"
-                   maxWidth="1.7976931348623157E308"
-                   alignment="CENTER"
-                   style="-fx-font-size: 34; -fx-font-weight: 800; -fx-text-fill: #f8fafc;" />
-            <!-- lets BoardController access it as an FXML label title with a label just being text on the screen -->
-            <!-- displays Quax as the default test on the screen. text is also centered. style sets font size, boldness and colour -->
+    <BorderPane style="-fx-background-color: linear-gradient(to bottom, #111827, #0b1220);">
+        <top>
+            <!-- top displays the game title, game mode, as well as whose turn it is to play. uses Vbox so elements are stacked vertically -->
+            <VBox spacing="10" style="-fx-padding: 18 22 14 22;"> <!-- Vbox stacks items vertically -->
+                <!-- Title -->
+                <Label fx:id="titleLabel"
+                       text="Quax"
+                       maxWidth="1.7976931348623157E308"
+                       alignment="CENTER"
+                       style="-fx-font-size: 34; -fx-font-weight: 800; -fx-text-fill: #f8fafc;" />
+                <!-- lets BoardController access it as an FXML label title with a label just being text on the screen -->
+                <!-- displays Quax as the default test on the screen. text is also centered. style sets font size, boldness and colour -->
 
-            <HBox spacing="12" alignment="CENTER" style="-fx-padding: 8 0 0 0;">
-                <!-- Hbox is used to arrange elements from left to right -->
-                <Label text="Mode:" style="-fx-text-fill: #cbd5e1; -fx-font-size: 14;"/>
-                <ComboBox fx:id="modeCombo" prefWidth="210"
-                          style="-fx-background-radius: 10; -fx-font-size: 13;" />
-                <!-- a dropdown menu for the game mode. id allows BoardController to access the ComboBox -->
-                <!-- style gives rounded corners and font size -->
+                <HBox spacing="12" alignment="CENTER" style="-fx-padding: 8 0 0 0;">
+                    <!-- Hbox is used to arrange elements from left to right -->
+                    <ComboBox fx:id="modeCombo" prefWidth="210"
+                              style="-fx-background-radius: 10; -fx-font-size: 13;" />
+                    <!-- a dropdown menu for the game mode. id allows BoardController to access the ComboBox -->
+                    <!-- style gives rounded corners and font size -->
 
-                <HBox spacing="10" alignment="CENTER"
-                      style="-fx-background-color: rgba(255,255,255,0.10);
-                             -fx-background-radius: 18;
-                             -fx-padding: 7 14;">
-                    <!-- rounds the box for the game mode, sets its background, and makes padding within the box -->
+                    <HBox spacing="10" alignment="CENTER"
+                          style="-fx-background-color: rgba(255,255,255,0.10);
+                                 -fx-background-radius: 18;
+                                 -fx-padding: 7 14;">
+                        <!-- rounds the box for the game mode, sets its background, and makes padding within the box -->
 
-                    <Label text="Turn:"
-                           style="-fx-text-fill: rgba(248,250,252,0.80); -fx-font-size: 13;"/>
-                    <!-- label that says "Turn:" - used to tell the user whose turn it is -->
+                        <Label text="Turn:"
+                               style="-fx-text-fill: rgba(248,250,252,0.80); -fx-font-size: 13;"/>
 
-                    <Label fx:id="turnLabel"
-                           text="BLACK to play"
-                           style="-fx-text-fill: #f8fafc; -fx-font-size: 13; -fx-font-weight: 700;"/>
-                    <!-- shows whose turn it. id lets the BoardController access it so it can be changed later -->
+                        <Label fx:id="turnLabel"
+                               text="BLACK to play"
+                               style="-fx-text-fill: #f8fafc; -fx-font-size: 13; -fx-font-weight: 700;"/>
+                    </HBox>
+                    <Button
+                            fx:id="pieRuleButton"
+                            text="Pie Rule"
+                            onAction="#onPieRuleClicked"
+                            visible="false"
+                            managed="false" />
+
+                    <Button fx:id="strategyButton"
+                            text="Show Strategy"
+                            onAction="#onStrategyButtonClicked" />
+
+                    <Label fx:id="strategyLabel"
+                           style="-fx-text-fill: #f8fafc; -fx-font-size: 13; -fx-font-weight: 700;" />
                 </HBox>
-                <Button
-                        fx:id="pieRuleButton"
-                        text="Pie Rule"
-                        onAction="#onPieRuleClicked"
-                        visible="false"
-                        managed="false" />
+            </VBox>
+        </top>
 
-                <Button fx:id="strategyButton"
-                        text="Show Strategy"
-                        onAction="#onStrategyButtonClicked" />
+        <center>
+            <!-- puts everything on the center area of the window -->
+            <StackPane alignment="CENTER">
+                <!-- stackpane puts things on top of each other so they can be centered easily -->
+                <padding>
+                    <Insets top="20" right="20" bottom="20" left="20"/>
+                </padding>
 
-                <Label fx:id="strategyLabel" />
-            </HBox>
-        </VBox>
-    </top>
+                <StackPane style="
+                        -fx-background-color: rgba(255,255,255,0.06);
+                        -fx-background-radius: 22;
+                        -fx-padding: 22;
+                        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.2, 0, 10);">
+                    <!-- creates the darker grey background -->
 
-    <center>
-        <!-- puts everything on the center area of the window -->
-        <StackPane alignment="CENTER">
-            <!-- stackpane puts things on top of each other so they can be centered easily -->
-            <padding>
-                <Insets top="20" right="20" bottom="20" left="20"/>
-            </padding>
-
-            <StackPane style="
-                    -fx-background-color: rgba(255,255,255,0.06);
-                    -fx-background-radius: 22;
-                    -fx-padding: 22;
-                    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.2, 0, 10);">
-                <!-- creates the darker grey background -->
-
-                <Pane fx:id="boardPane"
-                      minWidth="200" minHeight="200"
-                      prefWidth="900" prefHeight="700"
-                      style="-fx-background-color: #20293a; -fx-background-radius: 16;" />
-                <!-- creates the ligher grey background box where the quax board is drawn -->
+                    <Pane fx:id="boardPane"
+                          minWidth="200" minHeight="200"
+                          prefWidth="900" prefHeight="700"
+                          style="-fx-background-color: #20293a; -fx-background-radius: 16;" />
+                    <!-- creates the ligher grey background box where the quax board is drawn -->
+                </StackPane>
             </StackPane>
-        </StackPane>
-    </center>
-</BorderPane>
+        </center>
+    </BorderPane>
+
+    <StackPane fx:id="winnerOverlay"
+               visible="false"
+               managed="false"
+               style="-fx-background-color: rgba(0,0,0,0.72);">
+        <VBox alignment="CENTER" spacing="18">
+            <Label fx:id="winnerOverlayLabel"
+                   text="BLACK WINS"
+                   style="-fx-text-fill: white;
+                          -fx-font-size: 72;
+                          -fx-font-weight: 900;" />
+
+            <Label text="Game over"
+                   style="-fx-text-fill: #cbd5e1;
+                          -fx-font-size: 24;
+                          -fx-font-weight: 700;" />
+        </VBox>
+    </StackPane>
+</StackPane>

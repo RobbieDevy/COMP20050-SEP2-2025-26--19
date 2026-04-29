@@ -4,16 +4,18 @@ import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polygon;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import javafx.scene.control.Button;
 import javafx.util.Duration;
+
 
 public class BoardController {
     private static final int BOARD_SIZE = 11;
@@ -58,6 +60,8 @@ public class BoardController {
     @FXML private Button pieRuleButton;
     @FXML private Button strategyButton;
     @FXML private Label strategyLabel;
+    @FXML private StackPane winnerOverlay;
+    @FXML private Label winnerOverlayLabel;
 
     private static final boolean DEVELOPMENT_MODE = true;
     private boolean showStrategy = false;
@@ -71,6 +75,8 @@ public class BoardController {
     private boolean botMoveInProgress = false;
 
     private void updateTurnIndicator() {
+        updateWinnerOverlay();
+
         if (gameState.isGameOver()) {
             turnLabel.setText(gameState.getWinner() + " wins.");
             return;
@@ -83,24 +89,24 @@ public class BoardController {
     }
 
     @FXML
-    private void initialize() { // javafx runs after fxml loads - used for setting up UI and drawing the board
+    private void initialize() {
         setupModeUI();
         setupStrategyUI();
         updatePieRuleButton();
+        updateWinnerOverlay();
         Platform.runLater(this::redraw);
         resizer();
+        Platform.runLater(() -> {
+            if (isBotTurn()) {
+                makeBotMove(3000);
+            }
+        });
     }
 
     private void setupModeUI() {
         modeCombo.getItems().setAll(GameMode.HUMAN_VS_BOT);
         modeCombo.setValue(GameMode.HUMAN_VS_BOT);
         applyMode(modeCombo.getValue());
-
-        /* FOR HUMAN VS HUMAN MODE
-        modeCombo.valueProperty().addListener((obs, oldMode, newMode) -> { // whenever user picks new dropdown option, call applyMode again
-            if (newMode != null) applyMode(newMode);
-        });
-        */
 
         modeCombo.setVisible(false);
         modeCombo.setManaged(false);
@@ -127,26 +133,36 @@ public class BoardController {
     }
 
     private void updateStrategyUI() {
-        if (!DEVELOPMENT_MODE) return;
+        if (!DEVELOPMENT_MODE) {
+            return;
+        }
 
         if (strategyButton != null) {
             strategyButton.setText(showStrategy ? "Hide Strategy" : "Show Strategy");
         }
 
-        if (strategyLabel != null) {
-            if (showStrategy && strategyInfo != null) {
-                strategyLabel.setText(strategyInfo.title() + ": " + strategyInfo.description());
-            } else {
-                strategyLabel.setText("");
-            }
+        if (strategyLabel == null) {
+            return;
         }
+
+        if (!showStrategy) {
+            strategyLabel.setText("");
+            return;
+        }
+
+        if (strategyInfo == null) {
+            strategyLabel.setText("Bot strategy will appear when the bot is about to move.");
+            return;
+        }
+
+        strategyLabel.setText(strategyInfo.title() + ": " + strategyInfo.description());
     }
 
     @FXML
     private void onStrategyButtonClicked() {
         showStrategy = !showStrategy;
-        if (showStrategy) {
-            strategyInfo = botPlayer.peekStrategy();
+        if (showStrategy && isBotTurn()) {
+            strategyInfo = botPlayer.chooseStrategy(gameController.currentPlayer());
         }
         updateStrategyUI();
         redraw();
@@ -161,7 +177,7 @@ public class BoardController {
         String prettyTitle = "Quax - " + mode;
         titleLabel.setText(prettyTitle);
 
-        Platform.runLater(() -> { // sets window title using the same title displayed in the GUI
+        Platform.runLater(() -> {
             if (boardPane.getScene() == null) return;
             if (boardPane.getScene().getWindow() == null) return;
 
@@ -177,21 +193,32 @@ public class BoardController {
     }
 
     private void makeBotMove() {
-        if (gameState.isGameOver() || !isBotTurn() || botMoveInProgress) return;
+        makeBotMove(showStrategy ? 900 : 300);
+    }
 
+    private void makeBotMove(long delayMs) {
+        if (gameState.isGameOver() || !isBotTurn() || botMoveInProgress) {
+            return;
+        }
         botMoveInProgress = true;
-        strategyInfo = botPlayer.peekStrategy();
-        updateStrategyUI();
 
+        BotPlayer.BotStrategy chosenStrategy = botPlayer.chooseStrategy(gameController.currentPlayer());
+        strategyInfo = chosenStrategy;
+        updateStrategyUI();
         if (showStrategy) {
             redraw();
         }
 
-        PauseTransition pause = new PauseTransition(Duration.millis(showStrategy ? 900 : 300));
+        PauseTransition pause = new PauseTransition(Duration.millis(delayMs));
         pause.setOnFinished(event -> {
             try {
-                botPlayer.makeMove(gameController);
-                strategyInfo = null;
+                var result = botPlayer.makeMove(gameController, chosenStrategy);
+                if (!result.success()) {
+                    strategyInfo = null;
+                    updateStrategyUI();
+                    redraw();
+                    return;
+                }
                 redraw();
                 updateTurnIndicator();
                 updatePieRuleButton();
@@ -233,12 +260,23 @@ public class BoardController {
             overlay = makeDiamond(centerX, centerY, layout.diamondRadius());
         }
 
-        overlay.setFill(Color.color(0.2, 1.0, 0.2, 0.25));
-        overlay.setStroke(Color.LIMEGREEN);
-        overlay.setStrokeWidth(4);
+        overlay.setFill(Color.color(0.2, 1.0, 0.2, 0.12));
+        overlay.setStroke(Color.web("#22c55e"));
+        overlay.setStrokeWidth(3);
         overlay.setMouseTransparent(true);
 
         boardPane.getChildren().add(overlay);
+    }
+
+    private void updateWinnerOverlay() {
+        boolean gameOver = gameState.isGameOver();
+
+        winnerOverlay.setVisible(gameOver);
+        winnerOverlay.setManaged(gameOver);
+
+        if (gameOver) {
+            winnerOverlayLabel.setText(gameState.getWinner() + " WINS");
+        }
     }
 
     private BoardLayout calculateBoardLayout() {
@@ -386,8 +424,8 @@ public class BoardController {
 
         if (id.startsWith("Octagon_")) {
             String[] parts = id.split("_");
-            int row = Integer.parseInt(parts[1]); // grabs the second piece as row number
-            int col = Integer.parseInt(parts[2]); // grabs the third piece as column number
+            int row = Integer.parseInt(parts[1]);
+            int col = Integer.parseInt(parts[2]);
 
             var result = gameController.place(GameController.CellType.OCTAGON, row, col);
 

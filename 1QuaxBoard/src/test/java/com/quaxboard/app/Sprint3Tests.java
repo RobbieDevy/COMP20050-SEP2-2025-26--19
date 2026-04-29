@@ -5,9 +5,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class Sprint3Tests {
+
     @Test
     void pieRuleNotAvailableAtGameStart() {
-        GameState state = new GameState(11);
+        GameState state = new GameState(11, false);
         GameController controller = new GameController(state);
 
         assertEquals(GameState.Player.BLACK, controller.currentPlayer());
@@ -20,10 +21,11 @@ class Sprint3Tests {
 
     @Test
     void pieRuleAvailableAfterFirstMove() {
-        GameState state = new GameState(11);
+        GameState state = new GameState(11, false);
         GameController controller = new GameController(state);
 
-        GameController.MoveResult result = controller.place(GameController.CellType.OCTAGON, 0, 0);
+        GameController.MoveResult result =
+                controller.place(GameController.CellType.OCTAGON, 0, 0);
 
         assertTrue(result.success());
         assertEquals(GameState.Player.BLACK, state.getOctagonOwner(0, 0));
@@ -33,7 +35,7 @@ class Sprint3Tests {
 
     @Test
     void pieRuleSwapsColours() {
-        GameState state = new GameState(11);
+        GameState state = new GameState(11, false);
         GameController controller = new GameController(state);
 
         controller.place(GameController.CellType.OCTAGON, 0, 0);
@@ -47,13 +49,19 @@ class Sprint3Tests {
         assertEquals(GameState.HumanPlayer.PLAYER_2, state.getBlackPlayer());
         assertEquals(GameState.HumanPlayer.PLAYER_1, state.getWhitePlayer());
 
-        assertEquals(GameState.HumanPlayer.PLAYER_2, state.getPlayerForColour(GameState.Player.BLACK));
-        assertEquals(GameState.HumanPlayer.PLAYER_1, state.getPlayerForColour(GameState.Player.WHITE));
+        assertEquals(
+                GameState.HumanPlayer.PLAYER_2,
+                state.getPlayerForColour(GameState.Player.BLACK)
+        );
+        assertEquals(
+                GameState.HumanPlayer.PLAYER_1,
+                state.getPlayerForColour(GameState.Player.WHITE)
+        );
     }
 
     @Test
     void pieRuleCannotBeUsedTwice() {
-        GameState state = new GameState(11);
+        GameState state = new GameState(11, false);
         GameController controller = new GameController(state);
 
         controller.place(GameController.CellType.OCTAGON, 0, 0);
@@ -61,5 +69,22 @@ class Sprint3Tests {
         assertTrue(controller.activatePieRule().success());
         assertFalse(controller.canUsePieRule());
         assertFalse(controller.activatePieRule().success());
+    }
+
+    @Test
+    void pieRuleWorksWhenBotStartsAsBlackToo() {
+        GameState state = new GameState(11, true);
+        GameController controller = new GameController(state);
+
+        assertEquals(GameState.HumanPlayer.PLAYER_2, state.getBlackPlayer());
+        assertEquals(GameState.HumanPlayer.PLAYER_1, state.getWhitePlayer());
+
+        controller.place(GameController.CellType.OCTAGON, 0, 0);
+
+        assertTrue(controller.canUsePieRule());
+        assertTrue(controller.activatePieRule().success());
+
+        assertEquals(GameState.HumanPlayer.PLAYER_1, state.getBlackPlayer());
+        assertEquals(GameState.HumanPlayer.PLAYER_2, state.getWhitePlayer());
     }
 }

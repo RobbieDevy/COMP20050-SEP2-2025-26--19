@@ -6,10 +6,7 @@ public class GameController {
         RHOMBUS
     }
 
-
     public record MoveResult(boolean success, GameState.Player winner) {}
-
-    public record BotMove(CellType cellType, int row, int col, String strategy) {}
 
     private final GameState state;
 
